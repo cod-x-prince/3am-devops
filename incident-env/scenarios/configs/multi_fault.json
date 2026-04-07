@@ -1,0 +1,21 @@
+{
+  "name": "multi_fault",
+  "description": "Simultaneous faults",
+  "curriculum_level": 3,
+  "topology": "random",
+  "num_services": 12,
+  "fault_sequence": [
+    {
+      "tick": 0,
+      "fault_type": "MemoryLeak",
+      "target": 2
+    },
+    {
+      "tick": 0,
+      "fault_type": "BadDeploy",
+      "target": 7
+    }
+  ],
+  "max_steps": 25,
+  "success_condition": "all_healthy"
+}

@@ -1,0 +1,16 @@
+{
+  "name": "bad_deploy",
+  "description": "New deploy causes err rate spike",
+  "curriculum_level": 1,
+  "topology": "star",
+  "num_services": 12,
+  "fault_sequence": [
+    {
+      "tick": 0,
+      "fault_type": "BadDeploy",
+      "target": 1
+    }
+  ],
+  "max_steps": 20,
+  "success_condition": "all_healthy"
+}

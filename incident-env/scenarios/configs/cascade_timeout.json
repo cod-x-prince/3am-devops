@@ -1,0 +1,16 @@
+{
+  "name": "cascade_timeout",
+  "description": "Upstream latency config",
+  "curriculum_level": 2,
+  "topology": "mesh",
+  "num_services": 12,
+  "fault_sequence": [
+    {
+      "tick": 0,
+      "fault_type": "CascadeTimeout",
+      "target": 0
+    }
+  ],
+  "max_steps": 20,
+  "success_condition": "all_healthy"
+}

@@ -1,0 +1,16 @@
+{
+  "name": "thundering_herd",
+  "description": "Mass retry storm",
+  "curriculum_level": 2,
+  "topology": "star",
+  "num_services": 12,
+  "fault_sequence": [
+    {
+      "tick": 5,
+      "fault_type": "ThunderingHerd",
+      "target": 1
+    }
+  ],
+  "max_steps": 20,
+  "success_condition": "all_healthy"
+}

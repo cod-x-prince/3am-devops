@@ -1,0 +1,53 @@
+# OS / editor artifacts
+.DS_Store
+Thumbs.db
+ehthumbs.db
+*.swp
+*.swo
+
+# VS Code workspace settings
+.vscode/
+
+# Logs
+*.log
+logs/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+.venv/
+venv/
+env/
+.ipynb_checkpoints/
+
+# Rust / Cargo / maturin
+**/target/
+*.dll
+*.pdb
+
+# Node / frontend
+node_modules/
+dist/
+build/
+.vite/
+*.tsbuildinfo
+
+# Project-specific generated paths
+incident-env/.venv/
+incident-env/dashboard/node_modules/
+incident-env/dashboard/dist/
+incident-env/dashboard/.vite/
