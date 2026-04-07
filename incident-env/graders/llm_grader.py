@@ -99,5 +99,7 @@ class LLMGrader:
             )
             content = response.get("message", {}).get("content", "")
             return self._parse(content)
-        except (json.JSONDecodeError, ValidationError, KeyError, TypeError, Exception):
+        except (json.JSONDecodeError, ValidationError, KeyError, TypeError):
+            return LLMGraderResult.fallback()
+        except Exception:
             return LLMGraderResult.fallback()

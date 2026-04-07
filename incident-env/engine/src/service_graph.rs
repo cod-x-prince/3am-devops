@@ -241,18 +241,8 @@ impl RustServiceGraph {
     }
 
     fn scenario_bootstrap(&mut self) {
-        match self.scenario.as_str() {
-            "bad_deploy" => self.inject_fault_internal("BadDeploy", 1),
-            "memory_leak" => self.inject_fault_internal("MemoryLeak", 2),
-            "cascade_timeout" => self.inject_fault_internal("CascadeTimeout", 0),
-            "thundering_herd" => self.inject_fault_internal("ThunderingHerd", 1),
-            "split_brain" => self.inject_fault_internal("SplitBrain", 0),
-            "multi_fault" => {
-                self.inject_fault_internal("MemoryLeak", 2);
-                self.inject_fault_internal("BadDeploy", 7);
-            }
-            _ => self.inject_fault_internal("BadDeploy", 1),
-        }
+        // Scenario faults are injected by the Python wrapper from JSON configs.
+        // Keep Rust defaults neutral so Track A/Track B contract stays in one place.
     }
 
     fn obs_vec(&self) -> Vec<f32> {
@@ -327,7 +317,7 @@ impl RustServiceGraph {
         let newly_degraded = self.propagate_failures();
         let done = self.is_resolved_internal() || self.tick >= self.max_steps;
         let reward = self.score_step(action_type, newly_degraded, done);
-        self.cumulative_reward = (self.cumulative_reward + reward).clamp(-1.0, 1.0);
+        self.cumulative_reward += reward;
 
         (PyArray1::from_vec_bound(py, self.obs_vec()), reward, done)
     }

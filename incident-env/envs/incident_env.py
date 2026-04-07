@@ -58,6 +58,7 @@ class IncidentEnv(gym.Env):
 
         self._tick = 0
         self._cumulative_reward = 0.0
+        self._previous_degraded: set[str] = set()
 
     def _obs_to_np(self, obs: object) -> np.ndarray:
         return np.asarray(obs, dtype=np.float32).reshape((72,))
@@ -78,7 +79,14 @@ class IncidentEnv(gym.Env):
         self._cumulative_reward = 0.0
 
         obs = self._obs_to_np(self.graph.reset())
+        self._apply_scenario_faults()
         payload = self._services_payload()
+        services = payload.get("services", []) if isinstance(payload, dict) else []
+        self._previous_degraded = {
+            str(s.get("id"))
+            for s in services
+            if s.get("status") in {"degraded", "critical", "down"}
+        }
 
         info = {
             "scenario": self.scenario,
@@ -87,6 +95,14 @@ class IncidentEnv(gym.Env):
             "services_json": json.dumps(payload),
         }
         return obs, info
+
+    def _apply_scenario_faults(self) -> None:
+        for fault in self.scenario_cfg.get("fault_sequence", []):
+            if int(fault.get("tick", 0)) != 0:
+                continue
+            fault_type = str(fault.get("fault_type", ""))
+            target = int(fault.get("target", 0))
+            self.graph.inject_fault(fault_type, target)
 
     def step(self, action):
         target_service_id = int(action[0])
@@ -100,15 +116,21 @@ class IncidentEnv(gym.Env):
 
         payload = self._services_payload()
         services = payload.get("services", []) if isinstance(payload, dict) else []
+        degraded_now = {
+            str(s.get("id"))
+            for s in services
+            if s.get("status") in {"degraded", "critical", "down"}
+        }
         services_healthy = sum(1 for s in services if s.get("status") == "healthy")
         services_critical = sum(1 for s in services if s.get("status") == "critical")
         services_down = sum(1 for s in services if s.get("status") == "down")
-        services_degraded = sum(1 for s in services if s.get("status") == "degraded")
+        newly_degraded = len(degraded_now - self._previous_degraded)
+        self._previous_degraded = degraded_now
 
         info = {
             "tick": self._tick,
             "action_taken": f"{_ACTION_LABELS.get(ActionType(action_type), 'NoOp')}(service_{target_service_id})",
-            "newly_degraded": int(services_degraded),
+            "newly_degraded": int(newly_degraded),
             "services_healthy": int(services_healthy),
             "services_critical": int(services_critical),
             "services_down": int(services_down),

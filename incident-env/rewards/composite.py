@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 WEIGHTS = {
+    # Contract-aligned blend: prioritize fast resolution, then containment and action quality.
     "mttr": 0.5,
     "blast_radius": 0.25,
     "false_alarm": 0.15,
