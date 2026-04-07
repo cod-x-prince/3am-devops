@@ -1,0 +1,19 @@
+{
+  "name": "memory_leak",
+  "description": "Memory slowly rises until degradation",
+  "curriculum_level": 1,
+  "topology": "mesh",
+  "num_services": 12,
+  "fault_sequence": [
+    {
+      "tick": 0,
+      "fault_type": "MemoryLeak",
+      "target": 2,
+      "params": {
+        "leak_rate": 0.08
+      }
+    }
+  ],
+  "max_steps": 20,
+  "success_condition": "all_healthy"
+}
