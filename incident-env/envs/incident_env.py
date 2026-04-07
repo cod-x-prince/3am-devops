@@ -52,7 +52,9 @@ class IncidentEnv(gym.Env):
             shape=(self.NUM_SERVICES * self.NUM_METRICS,),
             dtype=np.float32,
         )
-        self.action_space = gym.spaces.MultiDiscrete([self.NUM_SERVICES, self.NUM_ACTION_TYPES])
+        self.action_space = gym.spaces.MultiDiscrete(
+            [self.NUM_SERVICES, self.NUM_ACTION_TYPES]
+        )
 
         self._tick = 0
         self._cumulative_reward = 0.0

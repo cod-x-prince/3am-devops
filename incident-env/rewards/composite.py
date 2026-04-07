@@ -8,7 +8,9 @@ WEIGHTS = {
 }
 
 
-def compute(mttr_r: float, blast_r: float, false_alarm_r: float, efficiency_r: float) -> float:
+def compute(
+    mttr_r: float, blast_r: float, false_alarm_r: float, efficiency_r: float
+) -> float:
     raw = (
         WEIGHTS["mttr"] * float(mttr_r)
         + WEIGHTS["blast_radius"] * float(blast_r)
