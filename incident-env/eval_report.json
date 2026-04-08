@@ -1,0 +1,17 @@
+{
+  "scenario_results": {
+    "mock_bad_deploy": {
+      "mean_reward": 0.2777051852905027,
+      "mean_steps_to_resolution": 18.36,
+      "mean_false_positives": 2.16,
+      "success_rate": 1.0
+    }
+  },
+  "overall_score": 63.88525926452513,
+  "mean_mttr_steps": 18.36,
+  "mean_blast_radius": 0.5,
+  "false_positive_rate": 0.12000000000000001,
+  "curriculum_level_reached": 1,
+  "vs_human_baseline": "Agent: 18.4s | Human: 4.2hr | Speedup: 824x",
+  "checkpoint_used": "trained_model"
+}

@@ -4,10 +4,12 @@ import argparse
 from dataclasses import dataclass
 from pathlib import Path
 import sys
+from datetime import datetime
 
 import torch
 from torch import nn
 from torch.distributions import Categorical
+from torch.utils.tensorboard import SummaryWriter
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
@@ -135,32 +137,94 @@ def ppo_update(batch, model, optimizer, hp: HyperParams):
 	}
 
 
+def save_checkpoint(model: ActorCritic, optimizer, epoch: int, curriculum_level: int, checkpoint_dir: Path):
+	"""Save model checkpoint to disk."""
+	checkpoint_dir.mkdir(parents=True, exist_ok=True)
+	checkpoint_path = checkpoint_dir / f"checkpoint_epoch_{epoch}_level_{curriculum_level}.pt"
+	
+	torch.save({
+		"epoch": epoch,
+		"model_state_dict": model.state_dict(),
+		"optimizer_state_dict": optimizer.state_dict(),
+		"curriculum_level": curriculum_level,
+	}, checkpoint_path)
+	
+	# Also save as "latest" for easy loading
+	latest_path = checkpoint_dir / "latest.pt"
+	torch.save({
+		"epoch": epoch,
+		"model_state_dict": model.state_dict(),
+		"optimizer_state_dict": optimizer.state_dict(),
+		"curriculum_level": curriculum_level,
+	}, latest_path)
+	
+	print(f"Checkpoint saved: {checkpoint_path.name}")
+
+
 def main():
 	parser = argparse.ArgumentParser(description="Track B PPO bootstrap trainer")
-	parser.add_argument("--epochs", type=int, default=5)
+	parser.add_argument("--epochs", type=int, default=1000)
 	parser.add_argument("--rollout-steps", type=int, default=256)
+	parser.add_argument("--checkpoint-interval", type=int, default=100)
+	parser.add_argument("--log-dir", type=str, default="logs")
+	parser.add_argument("--checkpoint-dir", type=str, default="checkpoints")
 	args = parser.parse_args()
 
 	device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+	print(f"Using device: {device}")
+	
 	hp = HyperParams()
 	env = MockIncidentEnv(max_steps=30, seed=42)
 	model = ActorCritic().to(device)
 	optimizer = torch.optim.Adam(model.parameters(), lr=hp.lr)
 	scheduler = CurriculumScheduler()
 
-	print("Starting bootstrap training on MockIncidentEnv")
+	# Setup TensorBoard
+	log_dir = Path(args.log_dir) / f"run_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+	writer = SummaryWriter(log_dir=str(log_dir))
+	checkpoint_dir = Path(args.checkpoint_dir)
+	
+	print(f"Starting training on MockIncidentEnv")
+	print(f"TensorBoard logs: {log_dir}")
+	print(f"Checkpoints: {checkpoint_dir}")
+	print(f"Hyperparameters: lr={hp.lr}, gamma={hp.gamma}, clip_epsilon={hp.clip_epsilon}")
+	
 	for epoch in range(1, args.epochs + 1):
 		batch = collect_rollout(env, model, args.rollout_steps, device)
 		metrics = ppo_update(batch, model, optimizer, hp)
 
-		advanced = scheduler.update(metrics["mean_reward"])
-		adv_msg = " | curriculum advanced" if advanced else ""
-		print(
-			f"epoch={epoch} loss={metrics['loss']:.4f} "
-			f"reward={metrics['mean_reward']:.4f}{adv_msg}"
-		)
+		# Log to TensorBoard
+		writer.add_scalar("Loss/total", metrics["loss"], epoch)
+		writer.add_scalar("Loss/actor", metrics["actor_loss"], epoch)
+		writer.add_scalar("Loss/critic", metrics["critic_loss"], epoch)
+		writer.add_scalar("Metrics/entropy", metrics["entropy"], epoch)
+		writer.add_scalar("Metrics/mean_reward", metrics["mean_reward"], epoch)
+		writer.add_scalar("Curriculum/level", scheduler.current_level, epoch)
 
-	print("Completed bootstrap training run")
+		# Check curriculum advancement
+		advanced = scheduler.update(metrics["mean_reward"])
+		if advanced:
+			print(f"🎓 Curriculum advanced to level {scheduler.current_level}")
+			writer.add_scalar("Curriculum/advancement", scheduler.current_level, epoch)
+		
+		# Console output
+		if epoch % 10 == 0 or advanced:
+			print(
+				f"epoch={epoch}/{args.epochs} | "
+				f"loss={metrics['loss']:.4f} | "
+				f"reward={metrics['mean_reward']:.4f} | "
+				f"entropy={metrics['entropy']:.4f} | "
+				f"level={scheduler.current_level}"
+			)
+
+		# Save checkpoint periodically
+		if epoch % args.checkpoint_interval == 0:
+			save_checkpoint(model, optimizer, epoch, scheduler.current_level, checkpoint_dir)
+
+	# Save final checkpoint
+	save_checkpoint(model, optimizer, args.epochs, scheduler.current_level, checkpoint_dir)
+	writer.close()
+	print(f"✅ Training complete! Final level: {scheduler.current_level}")
 
 
 if __name__ == "__main__":

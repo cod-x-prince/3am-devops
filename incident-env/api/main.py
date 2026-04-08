@@ -11,12 +11,27 @@ import sys
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+import torch
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
 	sys.path.insert(0, str(PROJECT_ROOT))
 
 from tests.mock_env import MockIncidentEnv
+
+CHECKPOINT_DIR = PROJECT_ROOT / "checkpoints"
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+
+def _resolve_trained_checkpoint() -> Path | None:
+	candidates = [
+		CHECKPOINT_DIR / "latest.pt",
+		CHECKPOINT_DIR / "policy_latest.pt",
+	]
+	for candidate in candidates:
+		if candidate.exists():
+			return candidate
+	return None
 
 
 class StartEpisodeRequest(BaseModel):
@@ -53,11 +68,25 @@ class EpisodeFrame(BaseModel):
 	llm_reasoning: str | None
 
 
+def _load_trained_model(checkpoint_path: Path):
+	"""Load trained model from checkpoint."""
+	from training.train import ActorCritic
+	
+	checkpoint = torch.load(checkpoint_path, map_location=DEVICE)
+	model = ActorCritic().to(DEVICE)
+	model.load_state_dict(checkpoint["model_state_dict"])
+	model.eval()
+	return model
+
+
 @dataclass
 class EpisodeState:
 	env: MockIncidentEnv
 	scenario: str
 	mode: str
+	checkpoint_path: str | None = None
+	trained_ready: bool = False
+	trained_model: any = None  # Loaded ActorCritic model if in trained mode
 	cumulative_reward: float = 0.0
 	done: bool = False
 	stopped: bool = False
@@ -125,7 +154,13 @@ def _build_connections():
 
 @app.get("/health")
 def health():
-	return {"status": "ok", "ollama": False, "model_loaded": False}
+	checkpoint = _resolve_trained_checkpoint()
+	return {
+		"status": "ok",
+		"ollama": False,
+		"model_loaded": checkpoint is not None,
+		"checkpoint_path": str(checkpoint) if checkpoint else None,
+	}
 
 
 @app.get("/scenarios")
@@ -140,10 +175,41 @@ def scenarios():
 @app.post("/episode/start")
 def start_episode(req: StartEpisodeRequest):
 	episode_id = str(uuid.uuid4())
+	checkpoint = _resolve_trained_checkpoint()
+	trained_ready = checkpoint is not None
+	mode = req.mode if req.mode in ("untrained", "trained") else "untrained"
 	env = MockIncidentEnv(max_steps=50)
 	env.reset()
-	EPISODES[episode_id] = EpisodeState(env=env, scenario=req.scenario, mode=req.mode)
-	return {"episode_id": episode_id, "scenario": req.scenario, "mode": req.mode}
+	
+	# Load trained model if in trained mode and checkpoint available
+	trained_model = None
+	if mode == "trained" and trained_ready:
+		try:
+			trained_model = _load_trained_model(checkpoint)
+			print(f"Loaded trained model from {checkpoint}")
+		except Exception as e:
+			print(f"Failed to load trained model: {e}")
+			trained_ready = False
+	
+	EPISODES[episode_id] = EpisodeState(
+		env=env,
+		scenario=req.scenario,
+		mode=mode,
+		checkpoint_path=str(checkpoint) if checkpoint else None,
+		trained_ready=trained_ready,
+		trained_model=trained_model,
+	)
+
+	payload = {
+		"episode_id": episode_id,
+		"scenario": req.scenario,
+		"mode": mode,
+		"trained_ready": trained_ready,
+		"checkpoint_path": str(checkpoint) if checkpoint else None,
+	}
+	if mode == "trained" and not trained_ready:
+		payload["warning"] = "trained mode requested but checkpoint not found; falling back to random policy"
+	return payload
 
 
 @app.post("/episode/stop/{episode_id}")
@@ -177,7 +243,19 @@ async def episode_stream(websocket: WebSocket, episode_id: str):
 	try:
 		obs, _ = state.env.reset()
 		while not state.done and not state.stopped:
-			action = state.env.action_space.sample()
+			# Select action based on mode
+			if state.trained_model is not None:
+				# Use trained policy
+				with torch.no_grad():
+					obs_tensor = torch.tensor(obs, dtype=torch.float32, device=DEVICE).unsqueeze(0)
+					svc_logits, act_logits, _ = state.trained_model(obs_tensor)
+					svc_action = torch.argmax(svc_logits, dim=-1).item()
+					act_action = torch.argmax(act_logits, dim=-1).item()
+					action = [svc_action, act_action]
+			else:
+				# Random policy (untrained mode or fallback)
+				action = state.env.action_space.sample()
+			
 			obs, reward, terminated, truncated, info = state.env.step(action)
 			state.tick += 1
 			state.cumulative_reward += float(reward)
@@ -218,6 +296,8 @@ async def episode_stream(websocket: WebSocket, episode_id: str):
 					"episode_id": episode_id,
 					"scenario": state.scenario,
 					"mode": state.mode,
+					"trained_ready": state.trained_ready,
+					"checkpoint_path": state.checkpoint_path,
 					"ticks": state.tick,
 					"cumulative_reward": state.cumulative_reward,
 					"resolution_status": "resolved",

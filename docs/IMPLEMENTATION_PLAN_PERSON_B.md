@@ -14,7 +14,7 @@ Date: 2026-04-08
   - Episode stream payload: EpisodeFrame from API_CONTRACT.md
 
 ## Critical Sync Points
-
+–
 1. Sync Point: observation shape and metric order from A
 
 - Required confirmation: env.observation_space.shape == (72,)
