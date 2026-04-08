@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any
 
 import torch
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -20,10 +20,19 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from envs import ActionModel, IncidentEnv, ObservationModel, OpenIncidentEnv, RewardModel
-from tasks import TASKS
+from tasks import TASKS, TASKS_BY_ID
 
 CHECKPOINT_DIR = PROJECT_ROOT / "checkpoints"
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+DEFAULT_SCENARIO = "bad_deploy"
+VALID_SCENARIOS = {
+    "bad_deploy",
+    "memory_leak",
+    "cascade_timeout",
+    "thundering_herd",
+    "split_brain",
+    "multi_fault",
+}
 
 
 def _resolve_trained_checkpoint() -> Path | None:
@@ -47,10 +56,6 @@ def _load_trained_model(checkpoint_path: Path) -> Any:
 class StartEpisodeRequest(BaseModel):
     scenario: str = "bad_deploy"
     mode: str = "untrained"
-
-
-class OpenEnvResetRequest(BaseModel):
-    scenario: str = "bad_deploy"
 
 
 class ServiceState(BaseModel):
@@ -165,6 +170,22 @@ def _build_connections() -> list[Connection]:
     ]
 
 
+def _resolve_reset_scenario(raw_scenario: Any, raw_task: Any) -> str:
+    if isinstance(raw_task, str):
+        task_spec = TASKS_BY_ID.get(raw_task)
+        if task_spec is not None:
+            return task_spec.scenario
+
+    if isinstance(raw_scenario, str):
+        if raw_scenario in VALID_SCENARIOS:
+            return raw_scenario
+        task_spec = TASKS_BY_ID.get(raw_scenario)
+        if task_spec is not None:
+            return task_spec.scenario
+
+    return DEFAULT_SCENARIO
+
+
 @app.get("/")
 def root() -> dict[str, Any]:
     return {
@@ -260,14 +281,31 @@ def _reset_openenv_session(scenario: str) -> dict[str, Any]:
 
 
 @app.post("/reset")
-def openenv_reset(req: OpenEnvResetRequest | None = None) -> dict[str, Any]:
-    scenario = "bad_deploy" if req is None else req.scenario
+async def openenv_reset(request: Request) -> dict[str, Any]:
+    scenario = _resolve_reset_scenario(
+        request.query_params.get("scenario"),
+        request.query_params.get("task") or request.query_params.get("task_id"),
+    )
+
+    body: Any = None
+    try:
+        body = await request.json()
+    except (json.JSONDecodeError, UnicodeDecodeError, ValueError):
+        body = None
+
+    if isinstance(body, dict):
+        scenario = _resolve_reset_scenario(
+            body.get("scenario"),
+            body.get("task") or body.get("task_id"),
+        )
+
     return _reset_openenv_session(scenario)
 
 
 @app.get("/reset")
-def openenv_reset_get(scenario: str = "bad_deploy") -> dict[str, Any]:
-    return _reset_openenv_session(scenario)
+def openenv_reset_get(scenario: str = DEFAULT_SCENARIO, task: str | None = None) -> dict[str, Any]:
+    resolved_scenario = _resolve_reset_scenario(scenario, task)
+    return _reset_openenv_session(resolved_scenario)
 
 
 @app.post("/step")
