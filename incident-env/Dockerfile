@@ -22,7 +22,6 @@ WORKDIR /app
 COPY pyproject.toml README.md openenv.yaml inference.py tasks.py ./
 COPY engine ./engine
 COPY api ./api
-COPY server ./server
 COPY envs ./envs
 COPY training ./training
 COPY rewards ./rewards
@@ -36,6 +35,6 @@ RUN python -m pip install --upgrade pip \
  && pip install --index-url https://download.pytorch.org/whl/cpu torch \
  && pip install -e .
 
-EXPOSE 8000
+EXPOSE 8000 7860
 
-CMD ["python", "-m", "uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["sh", "-lc", "python -m uvicorn api.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
