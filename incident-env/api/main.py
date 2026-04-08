@@ -302,10 +302,22 @@ async def openenv_reset(request: Request) -> dict[str, Any]:
     return _reset_openenv_session(scenario)
 
 
+@app.post("/reset/")
+async def openenv_reset_slash(request: Request) -> dict[str, Any]:
+    return await openenv_reset(request)
+
+
 @app.get("/reset")
 def openenv_reset_get(scenario: str = DEFAULT_SCENARIO, task: str | None = None) -> dict[str, Any]:
     resolved_scenario = _resolve_reset_scenario(scenario, task)
     return _reset_openenv_session(resolved_scenario)
+
+
+@app.get("/reset/")
+def openenv_reset_get_slash(
+    scenario: str = DEFAULT_SCENARIO, task: str | None = None
+) -> dict[str, Any]:
+    return openenv_reset_get(scenario=scenario, task=task)
 
 
 @app.post("/step")
@@ -319,9 +331,19 @@ def openenv_step(action: ActionModel) -> dict[str, Any]:
     }
 
 
+@app.post("/step/")
+def openenv_step_slash(action: ActionModel) -> dict[str, Any]:
+    return openenv_step(action)
+
+
 @app.get("/state")
 def openenv_state() -> dict[str, Any]:
     return _openenv_session().state()
+
+
+@app.get("/state/")
+def openenv_state_slash() -> dict[str, Any]:
+    return openenv_state()
 
 
 @app.post("/episode/start")
