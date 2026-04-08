@@ -8,6 +8,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import List, Dict, Any
 
+from tasks import score_task
+
 
 @dataclass
 class GraderResult:
@@ -144,4 +146,24 @@ def grade_episode(
             "false_positives": false_positives,
             "total_actions": len(actions_taken),
         }
+    )
+
+
+def grade_task(
+    *,
+    task_id: str,
+    steps_to_resolution: int,
+    previous_unhealthy: int,
+    current_unhealthy: int,
+    false_positives: int,
+    total_actions: int,
+) -> float:
+    """Return deterministic task score normalized to [0.0, 1.0]."""
+    return score_task(
+        task_id=task_id,
+        steps_to_resolution=steps_to_resolution,
+        previous_unhealthy=previous_unhealthy,
+        current_unhealthy=current_unhealthy,
+        false_positives=false_positives,
+        total_actions=total_actions,
     )

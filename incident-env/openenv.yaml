@@ -1,0 +1,53 @@
+name: IncidentEnv
+version: 0.1.0
+description: Autonomous incident remediation environment for multi-service production failures.
+entrypoint: envs.openenv_env:OpenIncidentEnv
+state_method: state
+spaces:
+  observation:
+    type: Box
+    shape: [72]
+    low: 0.0
+    high: 1.0
+    dtype: float32
+  action:
+    type: MultiDiscrete
+    nvec: [12, 7]
+models:
+  observation: envs.openenv_models:ObservationModel
+  action: envs.openenv_models:ActionModel
+  reward: envs.openenv_models:RewardModel
+tasks:
+  - id: bad_deploy_easy
+    scenario: bad_deploy
+    difficulty: easy
+    grader: graders.programmatic:grade_task
+    max_steps: 20
+    reward_range: [0.0, 1.0]
+  - id: cascade_timeout_medium
+    scenario: cascade_timeout
+    difficulty: medium
+    grader: graders.programmatic:grade_task
+    max_steps: 30
+    reward_range: [0.0, 1.0]
+  - id: multi_fault_hard
+    scenario: multi_fault
+    difficulty: hard
+    grader: graders.programmatic:grade_task
+    max_steps: 40
+    reward_range: [0.0, 1.0]
+scenarios:
+  - bad_deploy
+  - memory_leak
+  - cascade_timeout
+  - thundering_herd
+  - split_brain
+  - multi_fault
+metadata:
+  real_world_utility: incident remediation
+  reward_range: [-1.0, 1.0]
+  episode_max_length: 50
+  benchmark: incidentenv
+  required_env_vars: [API_BASE_URL, MODEL_NAME, HF_TOKEN]
+  observation_order:
+    [cpu, memory, error_rate, latency_p50, latency_p99, request_rate]

@@ -13,8 +13,11 @@ version = "0.1.0"
 requires-python = ">=3.11"
 dependencies = [
     "openenv", "torch", "torchrl", "tensordict", "gymnasium", "numpy",
-    "fastapi", "uvicorn", "websockets", "ollama", "pydantic"
+    "fastapi", "uvicorn", "websockets", "ollama", "pydantic", "openai"
 ]
 
 [project.optional-dependencies]
 dev = ["pytest", "black", "ruff", "tensorboard"]
+
+[project.scripts]
+server = "server.app:main"

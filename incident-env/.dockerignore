@@ -1,0 +1,17 @@
+.git
+.gitignore
+.venv
+__pycache__
+.pytest_cache
+.ruff_cache
+.mypy_cache
+*.pyc
+*.pyo
+*.pyd
+*.log
+checkpoints
+events.out.tfevents*
+dashboard/node_modules
+dashboard/dist
+target
+engine/target

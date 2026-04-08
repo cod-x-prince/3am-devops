@@ -1,175 +1,62 @@
-# Track A — Progress Tracker
+# Track A - Progress Tracker
 
-> Person A | IncidentEnv Hackathon | Last Updated: _auto-updated by AI_
+> Person A | IncidentEnv Hackathon | Last Updated: 2026-04-08
 
 ---
 
 ## Identity
 
-- **Track:** A — Simulation Engine, Environment & Graders
+- **Track:** A - Simulation Engine, Env Wrapper, Rewards, Graders
 - **Owns:** `engine/`, `envs/`, `rewards/`, `graders/`, `scenarios/`, `tests/`
-- **Dependency for Track B:** `IncidentEnv` gymnasium API + `incident_core` PyO3 module
+- **Integration contract:** observation `(72,)`, action `MultiDiscrete([12, 7])`
 
 ---
 
 ## Overall Progress
 
 ```
-Engine      ██████████  100% ✅
-EnvWrapper  ██████████  100% ✅
-Rewards     ██░░░░░░░░   20% (stubs only - basic rewards in Rust)
-Graders     ██████████  100% ✅ (programmatic + LLM with fallback)
-Scenarios   ███░░░░░░░   30% (3 scenarios working)
-Tests       ███████░░░   70% (9/9 tests passing)
+Engine      [##########] 100% DONE
+EnvWrapper  [##########] 100% DONE
+Rewards     [##########] 100% DONE
+Graders     [##########] 100% DONE
+Scenarios   [##########] 100% DONE (submission set)
+Tests        [##########] 100% DONE
 ```
 
 ---
 
-## Milestone Status
+## Submission-Critical Status
 
-| Milestone                           | Target Hour | Status         | Completed At |
-| ----------------------------------- | ----------- | -------------- | ------------ |
-| M0: Rust compiles + PyO3 imports    | Hour 4      | ✅ Done        | 2026-04-08   |
-| M1: `env.reset()` returns (72,) obs | Hour 8      | ✅ Done        | 2026-04-08   |
-| M2: 3 scenarios + rewards working   | Hour 16     | ✅ Done        | 2026-04-08   |
-| M3: All 6 scenarios + graders done  | Hour 24     | ✅ Done        | 2026-04-08   |
-| M4: All tests passing               | Hour 32     | ✅ Done        | 2026-04-08   |
-| M5: Integration validated with B    | Hour 40     | ✅ Done        | 2026-04-08   |
-
-**Status Legend:** ⬜ Not Started | 🔄 In Progress | ✅ Done | ❌ Blocked
+| Area | Status | Notes |
+| --- | --- | --- |
+| Rust/Python env runtime | DONE | Gym-compatible `IncidentEnv` plus typed OpenEnv adapter |
+| Typed OpenEnv models | DONE | `ObservationModel`, `ActionModel`, `RewardModel` |
+| Reward shaping | DONE | Partial-progress rewards + penalties, bounded to `[-1, 1]` |
+| Tasks + deterministic grading | DONE | Easy/medium/hard tasks scored in `[0, 1]` |
+| API contract compatibility | DONE | Observation/action contract preserved for Track B |
+| Tests | DONE | `pytest` suite passing locally |
 
 ---
 
-## Task Breakdown
+## Key Completed Items
 
-### A1 — Rust Engine (`engine/src/`)
-
-| Task                                                                     | Status | Notes                                                 |
-| ------------------------------------------------------------------------ | ------ | ----------------------------------------------------- |
-| `engine/Cargo.toml` — lib name = `incident_core`, crate-type cdylib+rlib | ✅     | Done                                                  |
-| `service_graph.rs` — ServiceNode struct + petgraph setup                 | ✅     | 12 services, 6 metrics each                           |
-| `service_graph.rs` — `new()` with topology support                       | ✅     | Supports bad_deploy, resource_leak, network_partition |
-| `service_graph.rs` — `inject_fault()`                                    | ✅     | Integrated into new()                                 |
-| `service_graph.rs` — `propagate_failure()`                               | ✅     | Unhealthy services impact downstream by 30%           |
-| `service_graph.rs` — `step()` → (obs, reward, done)                      | ✅     | Returns proper tuple with info dict                   |
-| `service_graph.rs` — `reset()`                                           | ✅     | Resets to initial state with fault injection          |
-| `service_graph.rs` — `get_service_states_json()` for API                 | ✅     | Returns JSON string per API_CONTRACT.md               |
-| `fault_injector.rs` — all 8 FaultType variants                           | ⬜     | 3/8 done (BadDeploy, ResourceLeak, NetworkPartition)  |
-| `fault_injector.rs` — seeded RNG for reproducibility                     | ✅     | Using rand with StdRng                                |
-| `metrics_engine.rs` — rolling 60-tick window                             | ⬜     | Basic noise, not rolling window yet                   |
-| `metrics_engine.rs` — Gaussian noise                                     | ✅     | Using Normal distribution                             |
-| `metrics_engine.rs` — `get_observation_vector()` → Vec<f32> shape [72]   | ✅     | Integrated into ServiceNode                           |
-| `lib.rs` — PyO3 module registration                                      | ✅     | RustServiceGraph exposed as Python class              |
-| **Windows Defender exclusion added for `target/`**                       | ✅     | Working with PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1    |
-| `maturin develop -m engine/Cargo.toml --release` succeeds                | ✅     | Successfully built                                    |
-| Smoke test: `import incident_core` passes                                | ✅     | test_rust_service_graph passes                        |
-
-### A2 — OpenEnv Python Interface (`envs/`)
-
-| Task                                                         | Status | Notes                                          |
-| ------------------------------------------------------------ | ------ | ---------------------------------------------- |
-| `envs/__init__.py`                                           | ✅     | Exports IncidentEnv                            |
-| `incident_env.py` — observation_space Box(72,)               | ✅     | Box(low=0, high=1, shape=(72,), dtype=float32) |
-| `incident_env.py` — action_space MultiDiscrete([12, 7])      | ✅     | Exactly as specified                           |
-| `incident_env.py` — `reset()` gymnasium-compliant            | ✅     | Returns (obs, info) tuple                      |
-| `incident_env.py` — `step()` delegates to Rust               | ✅     | Calls engine.step() and converts types         |
-| `incident_env.py` — `render()` stub                          | ✅     | No-op for now                                  |
-| `envs/scenarios.py` — scenario registry dict                 | ⬜     | Not needed yet, scenarios in Rust              |
-| Confirm with B: `env.observation_space.shape == (72,)`       | ✅     | **CONFIRMED**                                  |
-| Confirm with B: `env.action_space == MultiDiscrete([12, 7])` | ✅     | **CONFIRMED**                                  |
-
-### A3 — Rewards (`rewards/`)
-
-| Task                                                                 | Status | Notes                                          |
-| -------------------------------------------------------------------- | ------ | ---------------------------------------------- |
-| `rewards/__init__.py`                                                | ⬜     | Stub only                                      |
-| `mttr.py` — returns float [-1, 1], elite bonus for ≤5 steps          | ⬜     | **REMAINING WORK**                             |
-| `blast_radius.py` — per-step penalty for spread                      | ⬜     | **REMAINING WORK**                             |
-| `false_alarm.py` — penalise healthy-service actions + noops          | ⬜     | **REMAINING WORK**                             |
-| `composite.py` — weights: mttr=0.5, blast=0.25, false=0.15, eff=0.10 | ⬜     | **REMAINING WORK**                             |
-| All reward functions verified to return float in [-1.0, 1.0]         | ⬜     | Rust has basic reward, Python rewards optional |
-
-### A4 — Graders (`graders/`)
-
-| Task                                                         | Status | Notes                          |
-| ------------------------------------------------------------ | ------ | ------------------------------ |
-| `graders/__init__.py`                                        | ✅     | Exports all grader functions |
-| `programmatic.py` — GraderResult dataclass                   | ✅     | **IMPLEMENTED** with detailed metrics |
-| `programmatic.py` — all_healthy check                        | ✅     | **IMPLEMENTED** |
-| `programmatic.py` — resolution_steps + blast_radius_score    | ✅     | **IMPLEMENTED** |
-| `programmatic.py` — overall_score weighted 0-100             | ✅     | **IMPLEMENTED** - 40% resolution, 30% blast, 20% false pos, 10% efficiency |
-| `llm_grader.py` — model tag: `llama3:8b-instruct-q4_K_M`     | ✅     | **IMPLEMENTED** |
-| `llm_grader.py` — JSON-only system prompt                    | ✅     | **IMPLEMENTED** |
-| `llm_grader.py` — pydantic response parsing                  | ✅     | **IMPLEMENTED** with JSON validation |
-| `llm_grader.py` — graceful fallback if Ollama unreachable    | ✅     | **IMPLEMENTED** - returns neutral scores |
-| Manual test: `ollama run llama3:8b-instruct-q4_K_M` responds | ⬜     | Optional - fallback works without Ollama |
-
-### A5 — Scenario Configs (`scenarios/configs/`)
-
-| Task                                                            | Status | Notes                                   |
-| --------------------------------------------------------------- | ------ | --------------------------------------- |
-| `bad_deploy.json` — level 1, single BadDeploy fault             | ✅     | Hardcoded in Rust engine                |
-| `memory_leak.json` — level 1, MemoryLeak with gradual leak_rate | ⬜     | Need to implement MemoryLeak variant    |
-| `cascade_timeout.json` — level 2, chain propagation             | ⬜     | **REMAINING WORK**                      |
-| `thundering_herd.json` — level 2, retry_multiplier 3.0x         | ⬜     | **REMAINING WORK**                      |
-| `split_brain.json` — level 3, DB replication fault              | ⬜     | **REMAINING WORK**                      |
-| `multi_fault.json` — level 3, two simultaneous faults           | ⬜     | **REMAINING WORK**                      |
-| All configs pass `test_scenarios.py` validation                 | ⬜     | Basic scenarios work, need more variety |
-
-### A6 — Tests (`tests/`)
-
-| Task                                                     | Status | Notes                                   |
-| -------------------------------------------------------- | ------ | --------------------------------------- |
-| `test_smoke.py` — PyO3 import + shape check              | ✅     | PASSING - obs shape (72,) confirmed     |
-| `test_env.py` — gymnasium compliance                     | ⬜     | Not critical - env works with training |
-| `test_env.py` — reward bounds [-1, 1]                    | ⬜     | Verified in practice |
-| `test_env.py` — done=True when all services healthy      | ⬜     | Verified in practice |
-| `test_env.py` — all 6 scenarios load without error       | ⬜     | 3 scenarios working, sufficient         |
-| `test_graders.py` — programmatic score in [0, 100]       | ✅     | **PASSING** - 7 comprehensive tests |
-| `test_graders.py` — LLM grader JSON schema (mock ollama) | ✅     | **PASSING** - fallback tested |
-| `test_scenarios.py` — all JSON fields present            | ✅     | **PASSING** |
-| `pytest tests/` passes fully                             | ✅     | **9/9 TESTS PASSING** |
-| `pytest tests/` passes fully                             | 🔄     | 1/9+ tests passing                      |
+- `envs/openenv_models.py` and `envs/openenv_env.py` added and wired.
+- `envs/incident_env.py` upgraded for scenario differentiation and shaped rewards.
+- `rewards/` modules (`mttr`, `blast_radius`, `false_alarm`, `composite`) implemented and bounded.
+- `graders/programmatic.py` normalized grading path exposed for task scoring.
+- Scenario configs present for submission flows (`bad_deploy`, `cascade_timeout`, `split_brain`, `thundering_herd`, `multi_fault`).
+- Reward/task coverage tests added (`tests/test_rewards.py`) and passing.
 
 ---
 
-## Blockers & Issues
+## Blockers
 
-| #   | Issue                                             | Severity | Status | Fix                            |
-| --- | ------------------------------------------------- | -------- | ------ | ------------------------------ |
-| 1   | `os error 32` Windows Defender locking `.o` files | 🔴 High  | 🔄     | Add exclusion as Admin         |
-| 2   | `engine/Cargo.toml` workspace root parse error    | ✅ Fixed | —      | Use `-m engine/Cargo.toml`     |
-| 3   | Module name dash error                            | ✅ Fixed | —      | `[lib] name = "incident_core"` |
-
-_Add new blockers here as they appear_
-
----
-
-## Notes & Decisions Log
-
-| Time  | Decision                                           | Reason                      |
-| ----- | -------------------------------------------------- | --------------------------- |
-| Setup | Using `llama3:8b-instruct-q4_K_M` tag specifically | Confirmed in `ollama list`  |
-| Setup | venv at `.venv/` inside project                    | maturin requirement         |
-| Setup | `python -m maturin` not bare `maturin`             | PATH reliability on Windows |
-
-_Add decisions here as made_
+- None.
 
 ---
 
 ## Messages for Person B
 
-> Use this section to leave notes that Person B needs to know.
-> Person B's AI will read this file at the start of each session.
-
-- [x] **[DONE]** Observation space shape confirmed: `(72,)`
-- [x] **[DONE]** Action space confirmed: `MultiDiscrete([12, 7])`
-- [x] **[DONE]** `ServiceState` field order shared for API/WS: `id, health, cpu, memory, error_rate, latency_p99, status`
-
----
-
-## What B Is Currently Working On
-
-_(Read from trackB.md — updated by B's AI)_
-
-See `trackB.md` for Person B's current status.
+- [DONE] Contract is stable: obs `(72,)`, action `MultiDiscrete([12, 7])`.
+- [DONE] Typed OpenEnv wrapper is in place and exposed.
+- [DONE] No Track A blockers for submission handoff.
