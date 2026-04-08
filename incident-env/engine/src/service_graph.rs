@@ -326,6 +326,10 @@ impl RustServiceGraph {
         self.inject_fault_internal(fault_type, target);
     }
 
+    pub fn set_max_steps(&mut self, max_steps: u32) {
+        self.max_steps = max_steps.max(1);
+    }
+
     pub fn get_service_states_json(&self) -> String {
         self.services_json()
     }

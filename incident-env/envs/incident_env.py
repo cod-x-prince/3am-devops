@@ -45,6 +45,8 @@ class IncidentEnv(gym.Env):
         self.scenario = scenario
         self.curriculum_level = curriculum_level
         self.graph = RustServiceGraph(scenario, curriculum_level)
+        self.max_steps = int(self.scenario_cfg.get("max_steps", 50))
+        self.graph.set_max_steps(self.max_steps)
 
         self.observation_space = gym.spaces.Box(
             low=0.0,
@@ -59,6 +61,7 @@ class IncidentEnv(gym.Env):
         self._tick = 0
         self._cumulative_reward = 0.0
         self._previous_degraded: set[str] = set()
+        self._applied_faults: set[int] = set()
 
     def _obs_to_np(self, obs: object) -> np.ndarray:
         return np.asarray(obs, dtype=np.float32).reshape((72,))
@@ -77,9 +80,11 @@ class IncidentEnv(gym.Env):
         super().reset(seed=seed)
         self._tick = 0
         self._cumulative_reward = 0.0
+        self._applied_faults.clear()
 
-        obs = self._obs_to_np(self.graph.reset())
-        self._apply_scenario_faults()
+        self.graph.reset()
+        self._apply_scenario_faults_for_tick(0)
+        obs = self._obs_to_np(self.graph.get_observation_vector())
         payload = self._services_payload()
         services = payload.get("services", []) if isinstance(payload, dict) else []
         self._previous_degraded = {
@@ -96,23 +101,27 @@ class IncidentEnv(gym.Env):
         }
         return obs, info
 
-    def _apply_scenario_faults(self) -> None:
-        for fault in self.scenario_cfg.get("fault_sequence", []):
-            if int(fault.get("tick", 0)) != 0:
+    def _apply_scenario_faults_for_tick(self, tick: int) -> None:
+        for idx, fault in enumerate(self.scenario_cfg.get("fault_sequence", [])):
+            if idx in self._applied_faults:
+                continue
+            if int(fault.get("tick", 0)) != tick:
                 continue
             fault_type = str(fault.get("fault_type", ""))
             target = int(fault.get("target", 0))
             self.graph.inject_fault(fault_type, target)
+            self._applied_faults.add(idx)
 
     def step(self, action):
         target_service_id = int(action[0])
         action_type = int(action[1])
 
-        obs_raw, reward, terminated = self.graph.step(target_service_id, action_type)
-        obs = self._obs_to_np(obs_raw)
+        _, reward, terminated = self.graph.step(target_service_id, action_type)
         reward = float(np.clip(float(reward), -1.0, 1.0))
         self._cumulative_reward += reward
         self._tick = int(self.graph.get_tick())
+        self._apply_scenario_faults_for_tick(self._tick)
+        obs = self._obs_to_np(self.graph.get_observation_vector())
 
         payload = self._services_payload()
         services = payload.get("services", []) if isinstance(payload, dict) else []
@@ -140,8 +149,12 @@ class IncidentEnv(gym.Env):
             "services_json": json.dumps(payload),
         }
 
+        env_terminated = bool(terminated)
         truncated = False
-        return obs, reward, bool(terminated), truncated, info
+        if self._tick >= self.max_steps and not self.graph.is_resolved():
+            truncated = True
+            env_terminated = False
+        return obs, reward, env_terminated, truncated, info
 
     def render(self):
         return None

@@ -18,6 +18,9 @@ def test_env_contract_shapes():
     assert obs.shape == (72,)
     assert obs.dtype == np.float32
     assert "services_json" in info
+    # bad_deploy injects a tick-0 fault on service_1 that spikes error_rate.
+    service_1_error_rate_idx = 6 + 2
+    assert float(obs[service_1_error_rate_idx]) > 0.5
 
 
 def test_env_step_contract_and_reward_bounds():
