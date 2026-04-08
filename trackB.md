@@ -38,6 +38,15 @@ Integration [##########] 100% DONE
 
 ---
 
+## What Is Left (Final Ops)
+
+- [ ] Set Hugging Face Space environment variables: `API_BASE_URL`, `MODEL_NAME`, `HF_TOKEN`.
+- [ ] Deploy the current image/repo to the Space and verify live endpoints (`/`, `/health`, `/metadata`, `/schema`, `/mcp`, `/reset`, `/step`).
+- [ ] Run the official pre-validation script against the live Space URL and keep the output artifact.
+- [ ] Run a final `inference.py` pass in the deployment context and keep `[START]/[STEP]/[END]` logs for submission evidence.
+
+---
+
 ## Key Completed Items
 
 - `api/main.py` aligned for validator/runtime requirements, including metadata/schema/MCP paths.

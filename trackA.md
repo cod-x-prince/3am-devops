@@ -38,6 +38,15 @@ Tests        [##########] 100% DONE
 
 ---
 
+## What Is Left (Final Ops)
+
+- [ ] Deploy the current `main` branch to the Hugging Face Space and verify live `/health` and `/reset` responses.
+- [ ] Run the official pre-validation script against the live Space URL (not just local checks).
+- [ ] Keep API/contract frozen for submission; coordinate with Track B before any post-freeze change.
+- [ ] Clean local workspace artifact `incidentenv/` (nested repo clone) before packaging/sharing workspace.
+
+---
+
 ## Key Completed Items
 
 - `envs/openenv_models.py` and `envs/openenv_env.py` added and wired.

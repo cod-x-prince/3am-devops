@@ -16,6 +16,27 @@ tags:
 
 IncidentEnv is a real-world inspired OpenEnv-style environment for autonomous incident remediation in microservice systems. The agent must detect failures, choose remediation actions, and reduce blast radius under time pressure.
 
+## Judge Quickstart
+
+From `incident-env/`:
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest tests\
+.\.venv\Scripts\python.exe inference.py
+docker build -t incidentenv-openenv . && docker run --rm -p 8000:8000 incidentenv-openenv
+```
+
+Expected runtime endpoints after container start:
+
+- `GET /`
+- `GET /health`
+- `POST /reset`
+- `POST /step`
+- `GET /state`
+- `GET /metadata`
+- `GET /schema`
+- `POST /mcp`
+
 ## Why this environment matters
 
 This is not a toy game. It simulates an incident response workflow that real SRE and platform teams perform: diagnose service health, stop propagation, restart or reroute affected services, and restore the system to a healthy state.
@@ -148,7 +169,7 @@ openenv validate
 Run the API:
 
 ```powershell
-python -m uvicorn api.main:app --reload --port 8000
+.\.venv\Scripts\python.exe -m uvicorn api.main:app --reload --port 8000
 ```
 
 Run the dashboard:

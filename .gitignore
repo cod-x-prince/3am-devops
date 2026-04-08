@@ -51,3 +51,4 @@ incident-env/.venv/
 incident-env/dashboard/node_modules/
 incident-env/dashboard/dist/
 incident-env/dashboard/.vite/
+incidentenv/
