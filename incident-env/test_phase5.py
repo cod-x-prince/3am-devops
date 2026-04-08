@@ -3,13 +3,13 @@ E2E Demo Test Script - Phase 5 Validation
 Tests the full demo flow 3 consecutive times.
 """
 
-import requests
-import json
 import time
-from typing import Dict, Any
+
+import pytest
+import requests
 
 
-def test_api_health() -> bool:
+def _check_api_health() -> bool:
     """Test API health endpoint."""
     try:
         response = requests.get("http://localhost:8000/health", timeout=5)
@@ -25,7 +25,7 @@ def test_api_health() -> bool:
         return False
 
 
-def test_scenarios_endpoint() -> bool:
+def _check_scenarios_endpoint() -> bool:
     """Test scenarios listing."""
     try:
         response = requests.get("http://localhost:8000/scenarios", timeout=5)
@@ -33,7 +33,9 @@ def test_scenarios_endpoint() -> bool:
             scenarios = response.json()
             print(f"✓ Scenarios: {len(scenarios)} available")
             for s in scenarios:
-                print(f"  - {s['id']}: {s['name']}")
+                scenario_id = s.get("id", "unknown")
+                scenario_name = s.get("name", scenario_id)
+                print(f"  - {scenario_id}: {scenario_name}")
             return True
         return False
     except Exception as e:
@@ -41,7 +43,7 @@ def test_scenarios_endpoint() -> bool:
         return False
 
 
-def test_episode_lifecycle(run_number: int) -> bool:
+def _run_episode_lifecycle(run_number: int) -> bool:
     """Test complete episode lifecycle."""
     print(f"\n{'='*60}")
     print(f"Demo Run #{run_number}")
@@ -104,7 +106,7 @@ def test_episode_lifecycle(run_number: int) -> bool:
         return False
 
 
-def run_phase_5_validation():
+def run_phase_5_validation() -> bool:
     """Run Phase 5 E2E demo validation."""
     print("\n" + "="*60)
     print("PHASE 5: E2E DEMO RELIABILITY LOCK")
@@ -114,11 +116,11 @@ def run_phase_5_validation():
     print("Pre-flight Checks:")
     print("-" * 60)
     
-    if not test_api_health():
+    if not _check_api_health():
         print("\n❌ FAILED: API not healthy")
         return False
     
-    if not test_scenarios_endpoint():
+    if not _check_scenarios_endpoint():
         print("\n❌ FAILED: Scenarios endpoint not working")
         return False
     
@@ -130,7 +132,7 @@ def run_phase_5_validation():
     
     results = []
     for i in range(1, 4):
-        success = test_episode_lifecycle(i)
+        success = _run_episode_lifecycle(i)
         results.append(success)
         if i < 3:
             time.sleep(2)  # Brief pause between runs
@@ -166,3 +168,19 @@ def run_phase_5_validation():
 if __name__ == "__main__":
     success = run_phase_5_validation()
     exit(0 if success else 1)
+
+
+def test_api_health() -> None:
+    """Pytest wrapper for API health check."""
+    assert _check_api_health()
+
+
+def test_scenarios_endpoint() -> None:
+    """Pytest wrapper for scenarios endpoint check."""
+    assert _check_scenarios_endpoint()
+
+
+@pytest.mark.parametrize("run_number", [1, 2, 3])
+def test_episode_lifecycle(run_number: int) -> None:
+    """Pytest wrapper for one episode lifecycle run."""
+    assert _run_episode_lifecycle(run_number)
