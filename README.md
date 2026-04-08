@@ -26,7 +26,7 @@ From `incident-env\` on Windows:
 .\.venv\Scripts\python.exe -m pytest tests\
 .\.venv\Scripts\python.exe inference.py
 docker build -t incidentenv-openenv .
-docker run --rm -p 8000:8000 incidentenv-openenv
+docker run --rm -p 8000:7860 incidentenv-openenv
 ```
 
 Then verify endpoints:

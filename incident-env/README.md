@@ -23,7 +23,7 @@ From `incident-env/`:
 ```powershell
 .\.venv\Scripts\python.exe -m pytest tests\
 .\.venv\Scripts\python.exe inference.py
-docker build -t incidentenv-openenv . && docker run --rm -p 8000:8000 incidentenv-openenv
+docker build -t incidentenv-openenv . && docker run --rm -p 8000:7860 incidentenv-openenv
 ```
 
 Expected runtime endpoints after container start:
@@ -188,8 +188,10 @@ Build and run the container:
 
 ```powershell
 docker build -t incidentenv .
-docker run --rm -p 8000:8000 incidentenv
+docker run --rm -p 8000:7860 incidentenv
 ```
+
+The container binds Uvicorn to `${PORT:-7860}` so it stays healthy on hosted runtimes (including Hugging Face Spaces).
 
 ## Hugging Face Spaces
 
@@ -202,11 +204,11 @@ The project is fully containerized and ready to deploy as a Hugging Face Space. 
 1. Create a Hugging Face Space at [https://huggingface.co/spaces](https://huggingface.co/spaces)
 2. Select **Docker** as the SDK
 3. Upload your repository or connect your GitHub fork
-4. HF will automatically build the image and serve on port 8000
+4. HF will automatically build the image and serve on the platform-provided `PORT` (default fallback: 7860)
 
 **What You'll Get:**
 
-- FastAPI backend running on port 8000
+- FastAPI backend running on the platform-provided port
 - Interactive React dashboard with:
   - Service graph visualization
   - Real-time metrics feed
@@ -218,7 +220,7 @@ The project is fully containerized and ready to deploy as a Hugging Face Space. 
 
 ```powershell
 docker build -t incidentenv .
-docker run --rm -p 8000:8000 incidentenv
+docker run --rm -p 8000:7860 incidentenv
 # Open browser to http://localhost:8000
 # Optional dashboard if built: http://localhost:8000/dashboard
 ```

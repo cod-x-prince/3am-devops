@@ -35,6 +35,6 @@ RUN python -m pip install --upgrade pip \
  && pip install --index-url https://download.pytorch.org/whl/cpu torch \
  && pip install -e .
 
-EXPOSE 8000 7860
+EXPOSE 7860
 
-CMD ["sh", "-lc", "python -m uvicorn api.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+CMD ["sh", "-lc", "python -m uvicorn api.main:app --host 0.0.0.0 --port ${PORT:-7860}"]
