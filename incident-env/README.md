@@ -140,7 +140,9 @@ $env:HF_TOKEN = "your-token"
 .\.venv\Scripts\python.exe inference.py
 ```
 
-Latest deterministic baseline (heuristic fallback policy):
+`HF_TOKEN` (or `OPENAI_API_KEY`) is required. In strict mode, no heuristic fallback is used for action generation.
+
+Latest local baseline snapshot:
 
 | Task | Score (0.0-1.0) |
 | --- | --- |

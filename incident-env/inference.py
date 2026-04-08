@@ -18,11 +18,10 @@ except ImportError:  # pragma: no cover - optional runtime dependency in CI
     APITimeoutError = RuntimeError
     OpenAI = None
 
-API_KEY = os.getenv("HF_TOKEN") or os.getenv("API_KEY")
+API_KEY = os.getenv("HF_TOKEN") or os.getenv("OPENAI_API_KEY")
 API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
 MODEL_NAME_DEFAULT = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
-LOCAL_IMAGE_NAME = os.getenv("LOCAL_IMAGE_NAME", "incidentenv")
-BENCHMARK = os.getenv("INCIDENTENV_BENCHMARK", "incidentenv")
+BENCHMARK = "incidentenv"
 
 ACTION_NAMES = [
     "RestartService",
@@ -88,37 +87,6 @@ def _extract_json_object(text: str) -> dict[str, Any] | None:
     return None
 
 
-def _heuristic_action(state: dict[str, Any]) -> ActionModel:
-    services = state.get("engine_state", {}).get("services", [])
-    if not services:
-        return ActionModel(service_id=0, action_type=6)
-
-    ranked = sorted(
-        enumerate(services),
-        key=lambda item: (
-            float(item[1].get("error_rate", 0.0)),
-            float(item[1].get("latency_p99", 0.0)),
-            float(item[1].get("memory", 0.0)),
-        ),
-        reverse=True,
-    )
-    service_id, service = ranked[0]
-    error_rate = float(service.get("error_rate", 0.0))
-    latency_p99 = float(service.get("latency_p99", 0.0))
-    memory = float(service.get("memory", 0.0))
-
-    if error_rate >= 0.65:
-        action_type = 2
-    elif latency_p99 >= 0.65:
-        action_type = 5
-    elif memory >= 0.7:
-        action_type = 1
-    else:
-        action_type = 0
-
-    return ActionModel(service_id=int(service_id), action_type=action_type)
-
-
 def _ask_model(
     client: Any, model_name: str, task_id: str, state: dict[str, Any], history: list[str]
 ) -> ActionModel:
@@ -154,8 +122,10 @@ def _ask_model(
 
 
 def _build_client() -> Any:
-    if OpenAI is None or API_KEY is None:
-        return None
+    if OpenAI is None:
+        raise RuntimeError("openai package is required for inference")
+    if API_KEY is None:
+        raise RuntimeError("HF_TOKEN (or OPENAI_API_KEY) is required for inference")
     return OpenAI(base_url=API_BASE_URL, api_key=API_KEY)
 
 
@@ -187,14 +157,11 @@ def run_task(task_id: str, model_name: str, client: Any, max_steps_override: int
             state = env.state()
             step_error: str | None = None
 
-            if client is None:
-                action = _heuristic_action(state)
-            else:
-                try:
-                    action = _ask_model(client, model_name, task_id, state, history)
-                except (APIConnectionError, APIError, APITimeoutError, ValueError, TypeError) as exc:
-                    action = _heuristic_action(state)
-                    step_error = str(exc)
+            try:
+                action = _ask_model(client, model_name, task_id, state, history)
+            except (APIConnectionError, APIError, APITimeoutError, ValueError, TypeError) as exc:
+                step_error = str(exc)
+                raise RuntimeError(step_error) from exc
 
             next_observation, reward_model, done, info = env.step(action)
             reward_value = float(reward_model.value)
@@ -249,9 +216,14 @@ def main() -> int:
         get_task_spec(task_id)
 
     client = _build_client()
+    exit_code = 0
     for task_id in args.tasks:
-        run_task(task_id, args.model, client, args.max_steps)
-    return 0
+        try:
+            run_task(task_id, args.model, client, args.max_steps)
+        except Exception as exc:
+            print(str(exc), file=sys.stderr, flush=True)
+            exit_code = 1
+    return exit_code
 
 
 if __name__ == "__main__":
