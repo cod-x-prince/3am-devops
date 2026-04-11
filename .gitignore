@@ -52,3 +52,9 @@ incident-env/dashboard/node_modules/
 incident-env/dashboard/dist/
 incident-env/dashboard/.vite/
 incidentenv/
+
+# Local generated artifacts (do not commit)
+incident-env/backtest_*.json
+incident-env/tests/Untitled-*.json
+incident-env/logs/smoke/
+incident-env/checkpoints/smoke/

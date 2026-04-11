@@ -1,0 +1,46 @@
+{
+  "trace_id": "bad_deploy_trace_001",
+  "scenario": "bad_deploy",
+  "started_at": "2026-03-07T09:15:00Z",
+  "step_minutes": 1.0,
+  "human_runbook_mttr_minutes": 52.0,
+  "human_wrong_actions": 2,
+  "human_escalation_rate": 0.14,
+  "sources": {
+    "logs": [
+      "service_3 deploy sha=7f24a9 promoted to production",
+      "service_3 exception spike observed after release"
+    ],
+    "metrics": [
+      "service_3.error_rate +420%",
+      "service_3.latency_p99 +310%"
+    ],
+    "tickets": [
+      "INC-2026-1001: checkout failures after deploy"
+    ]
+  },
+  "events": [
+    {
+      "step": 0,
+      "service_id": 3,
+      "kind": "deploy",
+      "severity": 0.93,
+      "log_excerpt": "deploy 7f24a9 triggered 5xx burst",
+      "metric_signal": "error_rate",
+      "ticket_id": "INC-2026-1001",
+      "customer_impact_minutes": 11.0,
+      "escalation_risk": 0.28
+    },
+    {
+      "step": 2,
+      "service_id": 4,
+      "kind": "timeout",
+      "severity": 0.46,
+      "log_excerpt": "dependency timeouts from service_3 saturation",
+      "metric_signal": "latency_p99",
+      "ticket_id": "INC-2026-1001",
+      "customer_impact_minutes": 6.0,
+      "escalation_risk": 0.18
+    }
+  ]
+}

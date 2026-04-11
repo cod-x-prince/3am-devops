@@ -1,6 +1,7 @@
 {
   "name": "thundering_herd",
   "description": "Mass retry storm",
+  "trace_file": "thundering_herd_trace_001.json",
   "curriculum_level": 2,
   "topology": "star",
   "num_services": 12,

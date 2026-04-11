@@ -1,0 +1,46 @@
+{
+  "trace_id": "thundering_herd_trace_001",
+  "scenario": "thundering_herd",
+  "started_at": "2026-03-10T11:40:00Z",
+  "step_minutes": 1.0,
+  "human_runbook_mttr_minutes": 73.0,
+  "human_wrong_actions": 3,
+  "human_escalation_rate": 0.26,
+  "sources": {
+    "logs": [
+      "cache miss spike triggered retry fanout",
+      "service_0 request amplification from client backoff misconfig"
+    ],
+    "metrics": [
+      "service_0.request_rate +550%",
+      "service_3.cpu +180%"
+    ],
+    "tickets": [
+      "INC-2026-1065: retry storm (thundering herd)"
+    ]
+  },
+  "events": [
+    {
+      "step": 0,
+      "service_id": 0,
+      "kind": "traffic",
+      "severity": 0.91,
+      "log_excerpt": "retry storm started after cache eviction",
+      "metric_signal": "request_rate",
+      "ticket_id": "INC-2026-1065",
+      "customer_impact_minutes": 12.0,
+      "escalation_risk": 0.3
+    },
+    {
+      "step": 2,
+      "service_id": 3,
+      "kind": "traffic",
+      "severity": 0.68,
+      "log_excerpt": "traffic shifted to service_3 fallback pool",
+      "metric_signal": "cpu",
+      "ticket_id": "INC-2026-1065",
+      "customer_impact_minutes": 7.0,
+      "escalation_risk": 0.22
+    }
+  ]
+}

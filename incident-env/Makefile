@@ -10,6 +10,9 @@ train:
 eval:
 	python training/eval.py
 
+backtest:
+	python -m training.backtest --agent-mode greedy --max-incidents 50 --output backtest_report.json
+
 api:
 	uvicorn api.main:app --reload --port 8000
 

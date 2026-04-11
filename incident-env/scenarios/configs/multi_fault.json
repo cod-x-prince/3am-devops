@@ -1,6 +1,7 @@
 {
   "name": "multi_fault",
   "description": "Simultaneous faults",
+  "trace_file": "multi_fault_trace_001.json",
   "curriculum_level": 3,
   "topology": "random",
   "num_services": 12,

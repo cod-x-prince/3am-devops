@@ -49,6 +49,15 @@ This is not a toy game. It simulates an incident response workflow that real SRE
 - Episode length: up to 50 steps
 - Core scenarios: bad deploy, memory leak, cascade timeout, thundering herd, split brain, multi fault
 
+## Execution Modes
+
+IncidentEnv now supports two runtime modes:
+
+- `benchmark` (default): synthetic incident overlays for fast iteration.
+- `reality`: timeline-based trace replay from `scenarios/traces/` with safety rails, action justification checks, approval gates for high-risk actions, and per-step audit logs.
+
+Reality mode can be selected via API payloads (`execution_mode: "reality"`) and can pin a trace with `trace_id`.
+
 The observation vector contains 12 services x 6 metrics each:
 
 - cpu
@@ -128,6 +137,11 @@ It:
 
 - uses the OpenAI client
 - reads `API_BASE_URL`, `MODEL_NAME`, and `HF_TOKEN` from the environment
+- supports multiple policy modes via `--agent`:
+  - `llm` (strict LLM mode, default)
+  - `greedy` (fault-aware heuristic)
+  - `random` (seeded random baseline)
+  - `four-stage` (detect → prioritize → shortlist → LLM/heuristic choose)
 - prints strict structured logs in `[START]`, `[STEP]`, and `[END]` format
 - produces reproducible scores across the configured tasks
 
@@ -138,6 +152,9 @@ $env:API_BASE_URL = "https://router.huggingface.co/v1"
 $env:MODEL_NAME = "Qwen/Qwen2.5-72B-Instruct"
 $env:HF_TOKEN = "your-token"
 .\.venv\Scripts\python.exe inference.py
+.\.venv\Scripts\python.exe inference.py --agent greedy
+.\.venv\Scripts\python.exe inference.py --agent random --seed 42
+.\.venv\Scripts\python.exe inference.py --agent four-stage
 ```
 
 `HF_TOKEN` (or `OPENAI_API_KEY`) is required. In strict mode, no heuristic fallback is used for action generation.
@@ -172,6 +189,19 @@ Run the API:
 
 ```powershell
 .\.venv\Scripts\python.exe -m uvicorn api.main:app --reload --port 8000
+```
+
+Reality mode reset + step example:
+
+```powershell
+Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:8000/reset" -ContentType "application/json" -Body '{"scenario":"bad_deploy","execution_mode":"reality","trace_id":"bad_deploy_trace_001"}'
+Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:8000/step" -ContentType "application/json" -Body '{"action":[3,2],"justification":"Rollback deploy for active deploy and error_rate symptoms","approval_token":"INC-APPROVED","operator_id":"oncall"}'
+```
+
+Run historical backtests (reality traces):
+
+```powershell
+.\.venv\Scripts\python.exe -m training.backtest --agent-mode greedy --max-incidents 50 --output backtest_report.json
 ```
 
 Run the dashboard:

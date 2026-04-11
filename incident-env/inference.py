@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import random
 import re
 import sys
 from typing import Any
@@ -22,6 +23,7 @@ API_KEY = os.getenv("HF_TOKEN") or os.getenv("OPENAI_API_KEY")
 API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
 MODEL_NAME_DEFAULT = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
 BENCHMARK = "incidentenv"
+AGENT_CHOICES = ("llm", "greedy", "random", "four-stage")
 
 ACTION_NAMES = [
     "RestartService",
@@ -87,8 +89,189 @@ def _extract_json_object(text: str) -> dict[str, Any] | None:
     return None
 
 
+FAULT_ACTION_PRIORITY: dict[str, list[int]] = {
+    "deploy": [2, 0, 4],  # RollbackDeploy, RestartService, ToggleFeatureFlag
+    "memory": [1, 0, 5],  # ScaleUp, RestartService, TriggerCircuitBreaker
+    "timeout": [3, 5, 1],  # RerouteTraffic, TriggerCircuitBreaker, ScaleUp
+    "traffic": [3, 1, 5],  # RerouteTraffic, ScaleUp, TriggerCircuitBreaker
+    "split": [4, 3, 0],  # ToggleFeatureFlag, RerouteTraffic, RestartService
+}
+
+
+def _active_faults_from_state(state: dict[str, Any]) -> list[dict[str, Any]]:
+    engine_state = state.get("engine_state", {})
+    if not isinstance(engine_state, dict):
+        return []
+
+    raw_faults = engine_state.get("active_faults", [])
+    if not isinstance(raw_faults, list):
+        return []
+
+    faults: list[dict[str, Any]] = []
+    for payload in raw_faults:
+        if not isinstance(payload, dict):
+            continue
+
+        try:
+            service_id = int(payload.get("service_id", 0))
+            severity = float(payload.get("severity", 0.0))
+        except (TypeError, ValueError):
+            continue
+
+        kind = str(payload.get("kind", "unknown")).strip().lower()
+        if service_id < 0 or service_id > 11:
+            continue
+
+        faults.append(
+            {
+                "service_id": service_id,
+                "kind": kind,
+                "severity": max(0.0, min(1.0, severity)),
+            }
+        )
+    return faults
+
+
+def _fallback_action() -> ActionModel:
+    return ActionModel(service_id=0, action_type=6)
+
+
+def _action_candidates_for_fault(fault: dict[str, Any]) -> list[ActionModel]:
+    service_id = int(fault["service_id"])
+    action_priority = FAULT_ACTION_PRIORITY.get(str(fault["kind"]), [0, 1, 3])
+    return [
+        ActionModel(service_id=service_id, action_type=action_type)
+        for action_type in action_priority
+    ]
+
+
+def _greedy_action_from_state(state: dict[str, Any]) -> ActionModel:
+    faults = _active_faults_from_state(state)
+    if not faults:
+        return _fallback_action()
+
+    sorted_faults = sorted(
+        faults,
+        key=lambda fault: (-float(fault["severity"]), int(fault["service_id"])),
+    )
+    candidates = _action_candidates_for_fault(sorted_faults[0])
+    return candidates[0] if candidates else _fallback_action()
+
+
+def _random_action(rng: random.Random) -> ActionModel:
+    return ActionModel(service_id=rng.randint(0, 11), action_type=rng.randint(0, 6))
+
+
+def _four_stage_action(
+    client: Any | None,
+    model_name: str,
+    task_id: str,
+    state: dict[str, Any],
+    history: list[str],
+) -> ActionModel:
+    # Stage 1: detect current incident set.
+    faults = _active_faults_from_state(state)
+    if not faults:
+        return _fallback_action()
+
+    # Stage 2: prioritize by severity.
+    prioritized_faults = sorted(
+        faults,
+        key=lambda fault: (-float(fault["severity"]), int(fault["service_id"])),
+    )
+
+    # Stage 3: build a shortlist of strong heuristic actions.
+    shortlist: list[ActionModel] = []
+    for fault in prioritized_faults[:2]:
+        shortlist.extend(_action_candidates_for_fault(fault)[:2])
+    if not shortlist:
+        return _fallback_action()
+
+    # Stage 4: optional LLM arbitration among shortlist candidates.
+    if client is None:
+        return shortlist[0]
+
+    prompt = {
+        "task": task_id,
+        "instruction": (
+            "Pick ONE action from shortlist only. "
+            "Return JSON with keys service_id and action_type."
+        ),
+        "shortlist": [candidate.model_dump() for candidate in shortlist],
+        "state": state,
+        "history": history[-6:],
+    }
+    try:
+        response = client.chat.completions.create(
+            model=model_name,
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are an SRE policy selector. Choose from shortlist only and respond JSON.",
+                },
+                {"role": "user", "content": json.dumps(prompt, ensure_ascii=False)},
+            ],
+            temperature=0.0,
+            max_tokens=120,
+        )
+    except (APIConnectionError, APIError, APITimeoutError, TypeError, ValueError):
+        return shortlist[0]
+
+    content = response.choices[0].message.content or ""
+    parsed = _extract_json_object(content)
+    if parsed is None:
+        return shortlist[0]
+
+    try:
+        return ActionModel.model_validate(
+            {
+                "service_id": int(parsed.get("service_id", shortlist[0].service_id)),
+                "action_type": int(parsed.get("action_type", shortlist[0].action_type)),
+            }
+        )
+    except (TypeError, ValueError):
+        return shortlist[0]
+
+
+def _select_action(
+    *,
+    agent_mode: str,
+    client: Any | None,
+    model_name: str,
+    task_id: str,
+    state: dict[str, Any],
+    history: list[str],
+    rng: random.Random,
+) -> ActionModel:
+    if agent_mode == "llm":
+        if client is None:
+            raise RuntimeError("LLM agent requires HF_TOKEN (or OPENAI_API_KEY)")
+        return _ask_model(client, model_name, task_id, state, history)
+    if agent_mode == "greedy":
+        return _greedy_action_from_state(state)
+    if agent_mode == "random":
+        return _random_action(rng)
+    if agent_mode == "four-stage":
+        return _four_stage_action(client, model_name, task_id, state, history)
+    raise ValueError(f"Unknown agent mode: {agent_mode}")
+
+
+def _model_label(agent_mode: str, model_name: str, client: Any | None) -> str:
+    if agent_mode == "llm":
+        return model_name
+    if agent_mode == "four-stage":
+        if client is None:
+            return "four-stage-heuristic"
+        return f"four-stage-{model_name}"
+    return agent_mode
+
+
 def _ask_model(
-    client: Any, model_name: str, task_id: str, state: dict[str, Any], history: list[str]
+    client: Any,
+    model_name: str,
+    task_id: str,
+    state: dict[str, Any],
+    history: list[str],
 ) -> ActionModel:
     prompt = {
         "task": task_id,
@@ -102,7 +285,10 @@ def _ask_model(
     response = client.chat.completions.create(
         model=model_name,
         messages=[
-            {"role": "system", "content": "You are an SRE incident agent. Respond with JSON only."},
+            {
+                "role": "system",
+                "content": "You are an SRE incident agent. Respond with JSON only.",
+            },
             {"role": "user", "content": json.dumps(prompt, ensure_ascii=False)},
         ],
         temperature=0.0,
@@ -129,7 +315,14 @@ def _build_client() -> Any:
     return OpenAI(base_url=API_BASE_URL, api_key=API_KEY)
 
 
-def run_task(task_id: str, model_name: str, client: Any, max_steps_override: int | None) -> float:
+def run_task(
+    task_id: str,
+    model_name: str,
+    client: Any | None,
+    max_steps_override: int | None,
+    agent_mode: str,
+    rng: random.Random,
+) -> float:
     spec = get_task_spec(task_id)
     max_steps = max_steps_override if max_steps_override is not None else spec.max_steps
 
@@ -144,7 +337,9 @@ def run_task(task_id: str, model_name: str, client: Any, max_steps_override: int
     current_unhealthy = 0
     false_positives = 0
 
-    log_start(task=task_id, env=BENCHMARK, model=model_name)
+    log_start(
+        task=task_id, env=BENCHMARK, model=_model_label(agent_mode, model_name, client)
+    )
 
     try:
         observation = env.reset()
@@ -158,8 +353,22 @@ def run_task(task_id: str, model_name: str, client: Any, max_steps_override: int
             step_error: str | None = None
 
             try:
-                action = _ask_model(client, model_name, task_id, state, history)
-            except (APIConnectionError, APIError, APITimeoutError, ValueError, TypeError) as exc:
+                action = _select_action(
+                    agent_mode=agent_mode,
+                    client=client,
+                    model_name=model_name,
+                    task_id=task_id,
+                    state=state,
+                    history=history,
+                    rng=rng,
+                )
+            except (
+                APIConnectionError,
+                APIError,
+                APITimeoutError,
+                ValueError,
+                TypeError,
+            ) as exc:
                 step_error = str(exc)
                 raise RuntimeError(step_error) from exc
 
@@ -206,20 +415,40 @@ def run_task(task_id: str, model_name: str, client: Any, max_steps_override: int
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="IncidentEnv baseline inference runner")
+    parser = argparse.ArgumentParser(
+        description="IncidentEnv baseline inference runner"
+    )
     parser.add_argument("--tasks", nargs="*", default=default_task_ids())
     parser.add_argument("--model", default=MODEL_NAME_DEFAULT)
     parser.add_argument("--max-steps", type=int, default=None)
+    parser.add_argument("--agent", choices=AGENT_CHOICES, default="llm")
+    parser.add_argument("--seed", type=int, default=42)
     args = parser.parse_args()
 
     for task_id in args.tasks:
         get_task_spec(task_id)
 
-    client = _build_client()
+    client: Any | None = None
+    if args.agent == "llm":
+        client = _build_client()
+    elif args.agent == "four-stage":
+        try:
+            client = _build_client()
+        except RuntimeError:
+            client = None
+
+    rng = random.Random(args.seed)
     exit_code = 0
     for task_id in args.tasks:
         try:
-            run_task(task_id, args.model, client, args.max_steps)
+            run_task(
+                task_id=task_id,
+                model_name=args.model,
+                client=client,
+                max_steps_override=args.max_steps,
+                agent_mode=args.agent,
+                rng=rng,
+            )
         except Exception as exc:
             print(str(exc), file=sys.stderr, flush=True)
             exit_code = 1

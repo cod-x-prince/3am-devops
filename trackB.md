@@ -1,6 +1,6 @@
 # Track B - Progress Tracker
 
-> Person B | IncidentEnv Hackathon | Last Updated: 2026-04-08
+> Person B | IncidentEnv Hackathon | Last Updated: 2026-04-11
 
 ---
 
@@ -22,6 +22,17 @@ API Server  [##########] 100% DONE
 Dashboard   [##########] 100% DONE
 Integration [##########] 100% DONE
 ```
+
+---
+
+## Progress Update (2026-04-11)
+
+- ✅ Phase 2 win-plan execution status is finalized and synced.
+- ✅ Track B delivery status remains 100% complete and integration-ready.
+- ✅ No new blockers introduced.
+- ✅ Added API support for execution mode split (`benchmark` vs `reality`) and trace selection.
+- ✅ Added historical backtest runner (`training/backtest.py`) and API endpoint (`POST /backtest/run`).
+- ✅ Updated dashboard controls to select execution mode and trace in episode runs.
 
 ---
 
@@ -54,6 +65,8 @@ Integration [##########] 100% DONE
 - Docker image builds successfully and serves required OpenEnv endpoints.
 - Root/reset/health and schema/metadata/MCP endpoint checks pass on rebuilt container.
 - API + dashboard integration is in a releasable state for demo/submission.
+- Phase 2 execution summary finalized and synced with shared progress docs.
+- Reality-mode controls and backtest surfaces are now wired across API + dashboard + tests.
 
 ---
 
@@ -67,3 +80,4 @@ Integration [##########] 100% DONE
 
 - [DONE] Track B is fully synced to the current API contract.
 - [DONE] No additional Track A changes are required for submission.
+- [DONE] Phase 2 completion status and evidence links are synced in shared docs.

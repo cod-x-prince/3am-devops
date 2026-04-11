@@ -1,6 +1,6 @@
 # Track A - Progress Tracker
 
-> Person A | IncidentEnv Hackathon | Last Updated: 2026-04-08
+> Person A | IncidentEnv Hackathon | Last Updated: 2026-04-11
 
 ---
 
@@ -22,6 +22,16 @@ Graders     [##########] 100% DONE
 Scenarios   [##########] 100% DONE (submission set)
 Tests        [##########] 100% DONE
 ```
+
+---
+
+## Progress Update (2026-04-11)
+
+- ✅ Phase 2 win-plan execution status is finalized and synced.
+- ✅ Track A delivery status remains 100% complete and contract-stable for Track B.
+- ✅ No new blockers introduced.
+- ✅ Added reality-mode trace replay foundation with historical trace files and config mappings.
+- ✅ Added safety rails and operational scoring paths in `envs/incident_env.py` while preserving benchmark mode.
 
 ---
 
@@ -54,7 +64,9 @@ Tests        [##########] 100% DONE
 - `rewards/` modules (`mttr`, `blast_radius`, `false_alarm`, `composite`) implemented and bounded.
 - `graders/programmatic.py` normalized grading path exposed for task scoring.
 - Scenario configs present for submission flows (`bad_deploy`, `cascade_timeout`, `split_brain`, `thundering_herd`, `multi_fault`).
+- Historical trace artifacts added for all primary scenarios and wired through `trace_file` config pointers.
 - Reward/task coverage tests added (`tests/test_rewards.py`) and passing.
+- Phase 2 execution summary finalized and synced with shared progress docs.
 
 ---
 
@@ -69,3 +81,4 @@ Tests        [##########] 100% DONE
 - [DONE] Contract is stable: obs `(72,)`, action `MultiDiscrete([12, 7])`.
 - [DONE] Typed OpenEnv wrapper is in place and exposed.
 - [DONE] No Track A blockers for submission handoff.
+- [DONE] Phase 2 completion status and evidence links are synced in shared docs.

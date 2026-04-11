@@ -1,0 +1,46 @@
+{
+  "trace_id": "memory_leak_trace_001",
+  "scenario": "memory_leak",
+  "started_at": "2026-03-08T14:20:00Z",
+  "step_minutes": 1.0,
+  "human_runbook_mttr_minutes": 68.0,
+  "human_wrong_actions": 3,
+  "human_escalation_rate": 0.22,
+  "sources": {
+    "logs": [
+      "service_6 heap growth exceeded alert threshold",
+      "oomkiller reclaimed process in service_6 pod"
+    ],
+    "metrics": [
+      "service_6.memory usage > 94%",
+      "service_6.cpu +130%"
+    ],
+    "tickets": [
+      "INC-2026-1020: sustained memory saturation"
+    ]
+  },
+  "events": [
+    {
+      "step": 0,
+      "service_id": 6,
+      "kind": "memory",
+      "severity": 0.84,
+      "log_excerpt": "heap bloat from cache invalidation loop",
+      "metric_signal": "memory",
+      "ticket_id": "INC-2026-1020",
+      "customer_impact_minutes": 10.0,
+      "escalation_risk": 0.33
+    },
+    {
+      "step": 3,
+      "service_id": 7,
+      "kind": "timeout",
+      "severity": 0.41,
+      "log_excerpt": "downstream RPC timeout due to GC pauses",
+      "metric_signal": "latency_p99",
+      "ticket_id": "INC-2026-1020",
+      "customer_impact_minutes": 5.0,
+      "escalation_risk": 0.2
+    }
+  ]
+}

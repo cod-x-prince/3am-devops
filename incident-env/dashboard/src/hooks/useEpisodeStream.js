@@ -12,6 +12,7 @@ export function useEpisodeStream() {
   const [frames, setFrames] = useState([]);
   const [connectionStatus, setConnectionStatus] = useState("idle");
   const [error, setError] = useState(null);
+  const [warning, setWarning] = useState(null);
   const [isRunning, setIsRunning] = useState(false);
 
   const wsRef = useRef(null);
@@ -87,25 +88,36 @@ export function useEpisodeStream() {
   }, []);
 
   const startEpisode = useCallback(
-    async ({ scenario, mode }) => {
+    async ({ scenario, mode, executionMode, traceId }) => {
       closeSocket();
       shouldReconnectRef.current = true;
       completedRef.current = false;
       setFrames([]);
       setError(null);
+      setWarning(null);
       setConnectionStatus("starting");
 
       try {
         const res = await fetch(`${API_BASE}/episode/start`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ scenario, mode }),
+          body: JSON.stringify({
+            scenario,
+            mode,
+            execution_mode: executionMode ?? "benchmark",
+            trace_id: traceId ?? null,
+          }),
         });
         if (!res.ok) {
           throw new Error("Failed to start episode");
         }
 
         const payload = await res.json();
+        setWarning(
+          typeof payload.warning === "string" && payload.warning.length
+            ? payload.warning
+            : null,
+        );
         setEpisodeId(payload.episode_id);
         setIsRunning(true);
         connectSocket(payload.episode_id);
@@ -147,6 +159,7 @@ export function useEpisodeStream() {
     latestFrame: frames[frames.length - 1] ?? null,
     connectionStatus,
     error,
+    warning,
     isRunning,
     startEpisode,
     stopEpisode,

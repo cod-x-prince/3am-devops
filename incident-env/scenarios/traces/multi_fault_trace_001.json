@@ -1,0 +1,58 @@
+{
+  "trace_id": "multi_fault_trace_001",
+  "scenario": "multi_fault",
+  "started_at": "2026-03-14T03:55:00Z",
+  "step_minutes": 1.0,
+  "human_runbook_mttr_minutes": 97.0,
+  "human_wrong_actions": 5,
+  "human_escalation_rate": 0.41,
+  "sources": {
+    "logs": [
+      "service_2 deployed faulty build while service_8 leaked memory",
+      "service_10 retries triggered timeout chain"
+    ],
+    "metrics": [
+      "service_2.error_rate +340%",
+      "service_8.memory +300MB/min",
+      "service_10.latency_p99 +260%"
+    ],
+    "tickets": [
+      "INC-2026-1142: concurrent deploy+memory+timeout incident"
+    ]
+  },
+  "events": [
+    {
+      "step": 0,
+      "service_id": 2,
+      "kind": "deploy",
+      "severity": 0.85,
+      "log_excerpt": "bad deploy introduced serialization regression",
+      "metric_signal": "error_rate",
+      "ticket_id": "INC-2026-1142",
+      "customer_impact_minutes": 10.0,
+      "escalation_risk": 0.33
+    },
+    {
+      "step": 0,
+      "service_id": 8,
+      "kind": "memory",
+      "severity": 0.82,
+      "log_excerpt": "allocator pressure climbed after cache miss storm",
+      "metric_signal": "memory",
+      "ticket_id": "INC-2026-1142",
+      "customer_impact_minutes": 9.0,
+      "escalation_risk": 0.29
+    },
+    {
+      "step": 1,
+      "service_id": 10,
+      "kind": "timeout",
+      "severity": 0.71,
+      "log_excerpt": "downstream timeout amplification detected",
+      "metric_signal": "latency_p99",
+      "ticket_id": "INC-2026-1142",
+      "customer_impact_minutes": 7.0,
+      "escalation_risk": 0.35
+    }
+  ]
+}

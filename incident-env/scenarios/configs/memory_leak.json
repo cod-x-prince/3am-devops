@@ -1,15 +1,15 @@
 {
-  "name": "cascade_timeout",
-  "description": "Upstream latency config",
-  "trace_file": "cascade_timeout_trace_001.json",
+  "name": "memory_leak",
+  "description": "Heap growth and eventual OOM pressure",
+  "trace_file": "memory_leak_trace_001.json",
   "curriculum_level": 2,
   "topology": "mesh",
   "num_services": 12,
   "fault_sequence": [
     {
       "tick": 0,
-      "fault_type": "CascadeTimeout",
-      "target": 0
+      "fault_type": "MemoryLeak",
+      "target": 6
     }
   ],
   "max_steps": 20,

@@ -1,0 +1,57 @@
+{
+  "trace_id": "cascade_timeout_trace_001",
+  "scenario": "cascade_timeout",
+  "started_at": "2026-03-09T18:05:00Z",
+  "step_minutes": 1.0,
+  "human_runbook_mttr_minutes": 79.0,
+  "human_wrong_actions": 4,
+  "human_escalation_rate": 0.3,
+  "sources": {
+    "logs": [
+      "service_1 upstream latency exceeded timeout budget",
+      "retries amplified saturation across service_2/service_3"
+    ],
+    "metrics": [
+      "service_1.latency_p99 +500%",
+      "service_2.error_rate +210%"
+    ],
+    "tickets": [
+      "INC-2026-1047: cascading timeout propagation"
+    ]
+  },
+  "events": [
+    {
+      "step": 0,
+      "service_id": 1,
+      "kind": "timeout",
+      "severity": 0.86,
+      "log_excerpt": "upstream request timeout storm initiated",
+      "metric_signal": "latency_p99",
+      "ticket_id": "INC-2026-1047",
+      "customer_impact_minutes": 14.0,
+      "escalation_risk": 0.36
+    },
+    {
+      "step": 1,
+      "service_id": 2,
+      "kind": "timeout",
+      "severity": 0.63,
+      "log_excerpt": "service_2 retries amplified congestion",
+      "metric_signal": "error_rate",
+      "ticket_id": "INC-2026-1047",
+      "customer_impact_minutes": 8.0,
+      "escalation_risk": 0.28
+    },
+    {
+      "step": 2,
+      "service_id": 3,
+      "kind": "timeout",
+      "severity": 0.52,
+      "log_excerpt": "service_3 queue backlog overrun",
+      "metric_signal": "request_rate",
+      "ticket_id": "INC-2026-1047",
+      "customer_impact_minutes": 6.0,
+      "escalation_risk": 0.24
+    }
+  ]
+}

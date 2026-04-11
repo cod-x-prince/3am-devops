@@ -1,0 +1,46 @@
+{
+  "trace_id": "dependency_stall_trace_001",
+  "scenario": "dependency_stall",
+  "started_at": "2026-03-11T07:30:00Z",
+  "step_minutes": 1.0,
+  "human_runbook_mttr_minutes": 61.0,
+  "human_wrong_actions": 2,
+  "human_escalation_rate": 0.19,
+  "sources": {
+    "logs": [
+      "service_8 dependency pool exhausted",
+      "service_9 blocked waiting on service_8 responses"
+    ],
+    "metrics": [
+      "service_8.latency_p99 +260%",
+      "service_9.error_rate +120%"
+    ],
+    "tickets": [
+      "INC-2026-1084: dependency chain stall"
+    ]
+  },
+  "events": [
+    {
+      "step": 0,
+      "service_id": 8,
+      "kind": "dependency",
+      "severity": 0.72,
+      "log_excerpt": "connection pool saturation in dependency layer",
+      "metric_signal": "latency_p99",
+      "ticket_id": "INC-2026-1084",
+      "customer_impact_minutes": 9.0,
+      "escalation_risk": 0.24
+    },
+    {
+      "step": 1,
+      "service_id": 9,
+      "kind": "timeout",
+      "severity": 0.47,
+      "log_excerpt": "consumer service blocked by dependency stall",
+      "metric_signal": "error_rate",
+      "ticket_id": "INC-2026-1084",
+      "customer_impact_minutes": 6.0,
+      "escalation_risk": 0.19
+    }
+  ]
+}

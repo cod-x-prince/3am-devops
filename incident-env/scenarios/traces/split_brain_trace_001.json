@@ -1,0 +1,46 @@
+{
+  "trace_id": "split_brain_trace_001",
+  "scenario": "split_brain",
+  "started_at": "2026-03-13T10:25:00Z",
+  "step_minutes": 1.0,
+  "human_runbook_mttr_minutes": 84.0,
+  "human_wrong_actions": 4,
+  "human_escalation_rate": 0.35,
+  "sources": {
+    "logs": [
+      "service_5 and service_6 diverged leader terms",
+      "write quorum degraded during network partition flap"
+    ],
+    "metrics": [
+      "service_5.error_rate +280%",
+      "service_6.latency_p99 +240%"
+    ],
+    "tickets": [
+      "INC-2026-1121: split-brain consistency degradation"
+    ]
+  },
+  "events": [
+    {
+      "step": 0,
+      "service_id": 5,
+      "kind": "split",
+      "severity": 0.9,
+      "log_excerpt": "partitioned leader election caused dual primary state",
+      "metric_signal": "error_rate",
+      "ticket_id": "INC-2026-1121",
+      "customer_impact_minutes": 13.0,
+      "escalation_risk": 0.38
+    },
+    {
+      "step": 1,
+      "service_id": 6,
+      "kind": "split",
+      "severity": 0.75,
+      "log_excerpt": "replica lag exceeded write safety threshold",
+      "metric_signal": "latency_p99",
+      "ticket_id": "INC-2026-1121",
+      "customer_impact_minutes": 8.0,
+      "escalation_risk": 0.31
+    }
+  ]
+}
