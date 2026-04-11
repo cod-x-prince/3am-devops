@@ -33,6 +33,8 @@ Integration [##########] 100% DONE
 - ✅ Added API support for execution mode split (`benchmark` vs `reality`) and trace selection.
 - ✅ Added historical backtest runner (`training/backtest.py`) and API endpoint (`POST /backtest/run`).
 - ✅ Updated dashboard controls to select execution mode and trace in episode runs.
+- ✅ Hardened HF dashboard serving: browser `/` now routes to `/ui` when static assets exist, while API clients still receive JSON metadata at `/`.
+- ✅ Updated Docker builds to compile `dashboard/dist` inside container images so `/ui` is available on hosted runtimes.
 
 ---
 

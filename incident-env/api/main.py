@@ -10,6 +10,7 @@ from typing import Any
 import torch
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 import logging
 from pydantic import BaseModel, Field, ValidationError
@@ -137,6 +138,11 @@ MCP_METHODS = [
     "reset",
     "step",
 ]
+
+
+def _request_wants_html(request: Request) -> bool:
+    accept = request.headers.get("accept", "")
+    return "text/html" in accept and "application/json" not in accept
 
 
 def _resolve_trained_checkpoint() -> Path | None:
@@ -609,8 +615,10 @@ def _schema_payload() -> dict[str, Any]:
     }
 
 
-@app.get("/")
-def root() -> dict[str, Any]:
+@app.api_route("/", methods=["GET", "HEAD"], response_model=None)
+async def root(request: Request) -> Any:
+    if request.method == "GET" and dashboard_dist.exists() and _request_wants_html(request):
+        return RedirectResponse(url="/ui", status_code=307)
     return {
         "name": "IncidentEnv",
         "version": "0.1.0",

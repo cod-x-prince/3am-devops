@@ -251,11 +251,13 @@ The project is fully containerized and ready to deploy as a Hugging Face Space. 
 ```powershell
 docker build -t incidentenv .
 docker run --rm -p 8000:7860 incidentenv
-# Open browser to http://localhost:8000
-# Optional dashboard if built: http://localhost:8000/dashboard
+# API metadata: http://localhost:8000/
+# Dashboard: http://localhost:8000/ui
 ```
 
 **Note:** The container uses `python:3.11-slim` with Rust toolchain for compilation. Build may take 5-10 minutes on first run. Subsequent deployments will use cached layers.
+
+When the dashboard bundle is present, browser requests to `/` are redirected to `/ui`. API clients can still call `/` and receive JSON runtime metadata.
 
 ---
 

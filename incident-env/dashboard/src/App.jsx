@@ -7,7 +7,9 @@ import { MetricsFeed } from "./components/MetricsFeed";
 import { AgentLog } from "./components/AgentLog";
 import { ScoreCard } from "./components/ScoreCard";
 
-const API_BASE = import.meta.env.VITE_API_BASE ?? "http://localhost:8000";
+const API_BASE =
+  import.meta.env.VITE_API_BASE ??
+  (typeof window !== "undefined" ? window.location.origin : "http://localhost:8000");
 const FALLBACK_SCENARIOS = [
   { id: "bad_deploy", name: "Bad Deploy" },
   { id: "memory_leak", name: "Memory Leak" },

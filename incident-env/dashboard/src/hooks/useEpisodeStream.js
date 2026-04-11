@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { normalizeEpisodeFrame } from "../utils/episodeFrameSchema";
 
-const API_BASE = import.meta.env.VITE_API_BASE ?? "http://localhost:8000";
+const API_BASE =
+  import.meta.env.VITE_API_BASE ??
+  (typeof window !== "undefined" ? window.location.origin : "http://localhost:8000");
 const WS_BASE = API_BASE.replace("http://", "ws://").replace(
   "https://",
   "wss://",

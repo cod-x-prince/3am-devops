@@ -10,6 +10,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     curl \
     git \
+    nodejs \
+    npm \
     pkg-config \
     libssl-dev \
     ca-certificates \
@@ -34,7 +36,10 @@ COPY Makefile ./
 
 RUN python -m pip install --upgrade pip \
  && pip install --index-url https://download.pytorch.org/whl/cpu torch \
- && pip install -e .
+ && pip install -e . \
+ && cd dashboard \
+ && npm ci --no-audit --no-fund \
+ && npm run build
 
 EXPOSE 7860
 
